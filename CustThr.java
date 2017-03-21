@@ -18,11 +18,11 @@ public class CustThr implements Runnable {
     private int id;
     private int task;
     private Semaphore maxRoom;
-    private Semaphore workerCoord, taskToDo;
+    private Semaphore workerCoord, taskNeeded, taskToDo;
     private Semaphore custReady, custFinished;
     private ArrayList<Semaphore> workFinished;
 
-    public CustThr(int id, Semaphore maxRoom, Semaphore workerCoord, Semaphore taskToDo, Semaphore custReady, Semaphore custFinished, ArrayList<Semaphore> workFinished) {
+    public CustThr(int id, Semaphore maxRoom, Semaphore workerCoord, Semaphore taskNeeded, Semaphore taskToDo, Semaphore custReady, Semaphore custFinished, ArrayList<Semaphore> workFinished) {
         this.id = id;
         this.maxRoom = maxRoom;
         this.workerCoord = workerCoord;
@@ -50,9 +50,14 @@ public class CustThr implements Runnable {
         custReady.release();
 
         try {
-            custFinished.acquire();
+            taskNeeded.acquire();
         }
-        catch(InterruptedException e) { };
+        catch(InterruptedException e) { }
+
+        PostOffice.custId = this.id;
+        PostOffice.custTask = this.task;
+
+        taskNeeded.release();
 
         switch(task) {
 

@@ -14,6 +14,7 @@ public class PostOffice {
     Semaphore maxRoom = new Semaphore(10, true);
     Semaphore workerCoord = new Semaphore(3, true);
     Semaphore scaleCoord = new Semaphore(1, true);
+    Semaphore taskNeeded = new Semaphore(0, true);
     Semaphore taskToDo = new Semaphore(0, true);
     Semaphore withWorker = new Semaphore(0, true);
     Semaphore custReady = new Semaphore(0, true);
@@ -39,7 +40,7 @@ public class PostOffice {
     } //end for
 
     for(int i = 0; i < NUMCUSTOMERS; ++i) { //create customers
-      customers[i] = new CustThr(i, maxRoom, workerCoord, taskToDo, custReady, custFinished, workFinished);
+      customers[i] = new CustThr(i, maxRoom, workerCoord, taskNeeded, taskToDo, custReady, custFinished, workFinished);
       cThread[i] = new Thread(customers[i]);
       cThread[i].start();
     } //end for
