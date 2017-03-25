@@ -1,0 +1,22 @@
+Matthew Villarreal
+miv140130
+CS 4348.002
+
+Project 2
+
+Files:
+        PostOffice.java
+        WorkThr.java
+        CustThr.java
+        OSProject2_miv140130.docx
+        OSProject2Design_miv140130.docx
+
+Compile:
+        To compile, simply run the following command in the command line:
+
+            javac PostOffice.java
+
+Run:
+        Once inside the project directory, enter into the command line:
+
+            java PostOffice
