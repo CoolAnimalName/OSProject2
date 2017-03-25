@@ -4,9 +4,18 @@
 * Project 2
 *******************************************************************************
 *******************************************************************************
-*                                   Worker.java
+*                                  CustThr.java
 *
-*
+* This class defines the series of actions a customer will take when going to
+* the post office. It takes in all the necessary semaphores from
+* PostOffice.java, and has variables that identify the customer's ID number,
+* and the randomly assigned task they need done. If the post office is full
+* they must wait before they can enter, and then they must wait for an
+* available post office worker to service them. Once there is a worker
+* available, the customer will make their info available in the global
+* variables in PostOffice.java, wait for the worker to receive this info, then
+* they will tell the worker the task they want done. They will wait for the
+* worker to finish, then walk out of the post office.
 ******************************************************************************/
 
 import java.util.concurrent.Semaphore;
@@ -16,11 +25,12 @@ import java.util.ArrayList;
 public class CustThr implements Runnable {
 
   private int custId, task;
-  private ArrayList<Semaphore> done;
+  private ArrayList<Semaphore> satisfiedCust;
   private Semaphore maxRoom, workAvail, custRequest, finished, setCustInfo, getCustInfo, handleReq;
 
-  CustThr(int custId, ArrayList<Semaphore> done, Semaphore maxRoom, Semaphore workAvail, Semaphore custRequest, Semaphore finished, Semaphore setCustInfo, Semaphore getCustInfo, Semaphore handleReq) {
-    this.done = done;
+  //constructor
+  CustThr(int custId, ArrayList<Semaphore> satisfiedCust, Semaphore maxRoom, Semaphore workAvail, Semaphore custRequest, Semaphore finished, Semaphore setCustInfo, Semaphore getCustInfo, Semaphore handleReq) {
+    this.satisfiedCust  = satisfiedCust;
     this.custId = custId;
     this.maxRoom = maxRoom;
     this.workAvail = workAvail;
@@ -37,32 +47,35 @@ public class CustThr implements Runnable {
   public void run() {
     System.out.println("Customer " + custId + " created");
     try {
-      maxRoom.acquire();	//	get inside the store
+      maxRoom.acquire();	//wait for room in post office
     } //end try
     catch(InterruptedException e) { }
 
+    //enterPO()
     System.out.println("Customer " + custId + " enters post office");
 
     try {
-      workAvail.acquire(); 	// 	become one of three customers being served
+      workAvail.acquire(); //wait for worker to be ready
     } //end try
     catch(InterruptedException e) { }
 
     try {
-      setCustInfo.acquire();	//	customer and postal worker tied to each other, only this thread can write to global variables
+      setCustInfo.acquire();	//mutual exclustion on the global variables
     } //end try
     catch(InterruptedException e) { }
 
+    //giveInfo()
     PostOffice.custId = this.custId;
     PostOffice.task = this.task;
 
-    custRequest.release();	//	allows worker to begin reading data
+    custRequest.release(); //finished with global variables
 
     try {
-      getCustInfo.acquire();			//	waits for worker to acquire data
+      getCustInfo.acquire(); //worker finished with global variables
     } //end try
     catch(InterruptedException e) { }
 
+    //ask()
     switch(this.task) {
       case 0: //buy stamps
         System.out.println("Customer " + custId + " asks postal worker " + PostOffice.custWithWorker[custId] + " to buy stamps");
@@ -80,19 +93,19 @@ public class CustThr implements Runnable {
         break; //do nothing
     } //end switch
 
-    handleReq.release();	//	allows worker to begin finished on task
+    handleReq.release();	//customer done explaining task
 
-    setCustInfo.release();		//	other threads can now write to global variables
+    setCustInfo.release();		//another customer can write to global variables
 
     try {
-      done.get(this.custId).acquire();	//	pauses until done being served
+      satisfiedCust.get(this.custId).acquire();	//wait until worker is done
     } //end try
     catch(InterruptedException e) { }
 
-    finished.release();		//	customer is satisfied and is leaving
+    finished.release();		//customer is ready to leave
 
     System.out.println( "Customer " + custId + " leaves post office" );
 
-    maxRoom.release();		//	allows another customer to enter post office
+    maxRoom.release();		//one more spot in post office available
   } //end run
 } //end CustThr

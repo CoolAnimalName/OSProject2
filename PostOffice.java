@@ -1,3 +1,19 @@
+/******************************************************************************
+* Matthew Villarreal (miv140130)
+* CS 4348.002
+* Project 2
+*******************************************************************************
+*******************************************************************************
+*                               PostOffice.java
+*
+* This program initializes all semaphores and threads necessary to coordinate
+* the actions of the workers and customers in a post office. After
+* initialization of a worker or customer thread, it is ran, and then join back
+* to the original process. It also sets the size of the post office, the
+* number of workers in the post office, and any global varaible needed in
+* order to share specific data values with the worker and customer.
+******************************************************************************/
+
 import java.util.concurrent.Semaphore;
 import java.util.ArrayList;
 
@@ -12,15 +28,15 @@ public class PostOffice {
 		final int NUMCUSTOMERS	= 50;
 		final int NUMWORKERS 	= 3;
 
-		ArrayList<Semaphore> satisfiedCust 	= new ArrayList<Semaphore>();	//	makes a semaphore for every customer to indicate their completion status
-		Semaphore maxRoom	= new Semaphore(10, true);		//	makes sure only ten NUMCUSTOMERS are inside the post office
-		Semaphore workAvail = new Semaphore(3, true);		//	controls number of NUMCUSTOMERS able to be helped at once
-		Semaphore custRequest	= new Semaphore(0, true);		//	lets worker know customer is ready
-		Semaphore setCustInfo = new Semaphore(1, true);		//	protects global variable access
-		Semaphore getCustInfo = new Semaphore(0, true);		//	ensures customer requests assistance at appropriate time
-		Semaphore handleReq	= new Semaphore(0, true);	//	forces customer to request service before worker can begin working
-		Semaphore scalesAvail	= new Semaphore(1, true);		//	ensures only one worker can use the scales at a time
-		Semaphore finished = new Semaphore(0 , true);		//	determines whether a worker is currently helping a customer
+		ArrayList<Semaphore> satisfiedCust 	= new ArrayList<Semaphore>();	//
+		Semaphore maxRoom	= new Semaphore(10, true); //only 10 customers in the post office at a time
+		Semaphore workAvail = new Semaphore(3, true);	//only 3 workers to help customers
+		Semaphore setCustInfo = new Semaphore(1, true);	//customer sets global variables for worker
+		Semaphore custRequest	= new Semaphore(0, true);	//customer finished setting global variables
+		Semaphore getCustInfo = new Semaphore(0, true);	//worker gets global variables
+		Semaphore handleReq	= new Semaphore(0, true);	//worker does proper wait time
+		Semaphore scalesAvail	= new Semaphore(1, true);	//only one worker can use the scales
+		Semaphore finished = new Semaphore(0 , true);	//worker finished task for customer
 
 		System.out.println("Simulating Post Office with 50 customers and 3 postal workers");
 
@@ -46,7 +62,7 @@ public class PostOffice {
 			cThread[i].start();
 		} //end for
 
-		// re-integrate customers into original process once they have finished
+		//join customer threads back to the original process
 		for(int i = 0; i < NUMCUSTOMERS; i++) {
 			try {
 				cThread[i].join();
