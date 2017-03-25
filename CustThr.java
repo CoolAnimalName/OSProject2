@@ -15,76 +15,84 @@ import java.util.ArrayList;
 
 public class CustThr implements Runnable {
 
-    private int id;
-    private int task;
-    private Semaphore maxRoom;
-    private Semaphore workerCoord, taskNeeded, taskToDo;
-    private Semaphore custReady, custFinished;
-    private ArrayList<Semaphore> workFinished;
+  private int custId, task;
+  private ArrayList<Semaphore> done;
+  private Semaphore maxRoom, workAvail, custRequest, finished, setCustInfo, getCustInfo, handleReq;
 
-    public CustThr(int id, Semaphore maxRoom, Semaphore workerCoord, Semaphore taskNeeded, Semaphore taskToDo, Semaphore custReady, Semaphore custFinished, ArrayList<Semaphore> workFinished) {
-        this.id = id;
-        this.maxRoom = maxRoom;
-        this.workerCoord = workerCoord;
-        this.taskToDo = taskToDo;
-        this.custReady = custReady;
-        this.custFinished = custFinished;
-        this.workFinished = workFinished;
+  CustThr(int custId, ArrayList<Semaphore> done, Semaphore maxRoom, Semaphore workAvail, Semaphore custRequest, Semaphore finished, Semaphore setCustInfo, Semaphore getCustInfo, Semaphore handleReq) {
+    this.done = done;
+    this.custId = custId;
+    this.maxRoom = maxRoom;
+    this.workAvail = workAvail;
+    this.custRequest 	= custRequest;
+    this.finished 	= finished;
+    this.setCustInfo = setCustInfo;
+    this.getCustInfo = getCustInfo;
+    this.handleReq 	= handleReq;
 
-        Random rTask = new Random();
-        this.task = rTask.nextInt(3) + 1; //task assignment
-    } //end Customer(1)
+    Random randNum = new Random();
+    this.task = randNum.nextInt(3);
+  } //end CustThr
 
-    public void run() {
+  public void run() {
+    System.out.println("Customer " + custId + " created");
+    try {
+      maxRoom.acquire();	//	get inside the store
+    } //end try
+    catch(InterruptedException e) { }
 
-        System.out.println("Customer " + id + " created");
+    System.out.println("Customer " + custId + " enters post office");
 
-        try {
-            maxRoom.acquire();
-        }
-        catch(InterruptedException e) { };
+    try {
+      workAvail.acquire(); 	// 	become one of three customers being served
+    } //end try
+    catch(InterruptedException e) { }
 
+    try {
+      setCustInfo.acquire();	//	customer and postal worker tied to each other, only this thread can write to global variables
+    } //end try
+    catch(InterruptedException e) { }
 
-        System.out.println("Customer " + id + " enters post office");
+    PostOffice.custId = this.custId;
+    PostOffice.task = this.task;
 
-        custReady.release();
+    custRequest.release();	//	allows worker to begin reading data
 
-        try {
-            taskNeeded.acquire();
-        }
-        catch(InterruptedException e) { }
+    try {
+      getCustInfo.acquire();			//	waits for worker to acquire data
+    } //end try
+    catch(InterruptedException e) { }
 
-        PostOffice.custId = this.id;
-        PostOffice.custTask = this.task;
+    switch(this.task) {
+      case 0: //buy stamps
+        System.out.println("Customer " + custId + " asks postal worker " + PostOffice.custWithWorker[custId] + " to buy stamps");
+        break;
 
-        taskNeeded.release();
+      case 1: //mail a letter
+        System.out.println("Customer " + custId + " asks postal worker " + PostOffice.custWithWorker[custId] + " to mail a letter");
+        break;
 
-        switch(task) {
+      case 2: //mail a package
+        System.out.println("Customer " + custId + " asks postal worker " + PostOffice.custWithWorker[custId] + " to mail a package");
+        break;
 
-            case 1: //buy stamps
-                System.out.println("Customer " + id + "asks postal worker " + " to buy stamps");
-                break;
+      default:
+        break; //do nothing
+    } //end switch
 
-            case 2: //mail letter
-                System.out.println("Customer " + id + "asks postal worker " + " to mail a letter");
-                break;
+    handleReq.release();	//	allows worker to begin finished on task
 
-            case 3: //mail package
-                System.out.println("Customer " + id + "asks postal worker " + " to mail a package");
-                break;
+    setCustInfo.release();		//	other threads can now write to global variables
 
-            default:
-                break;
-            } //end switch
+    try {
+      done.get(this.custId).acquire();	//	pauses until done being served
+    } //end try
+    catch(InterruptedException e) { }
 
-        try {
-            workFinished.get(this.id).acquire();
-        } //end try
-        catch(InterruptedException e) { } //end catch
+    finished.release();		//	customer is satisfied and is leaving
 
-        maxRoom.release();
+    System.out.println( "Customer " + custId + " leaves post office" );
 
-        System.out.println("Customer " + id + " leaves the post office");
-
-    } //end run
-} //end CustSem
+    maxRoom.release();		//	allows another customer to enter post office
+  } //end run
+} //end CustThr

@@ -14,77 +14,88 @@ import java.util.Random;
 import java.util.ArrayList;
 
 public class WorkThr implements Runnable {
-  private int id;
-  private int task;
-  private int custId;
+  private int workId;
+	private int custId;
+	private int task;
+	private ArrayList<Semaphore> done;
+	private Semaphore workAvail;
+	private Semaphore custRequest;
+	private Semaphore finished;
+	private Semaphore getCustInfo;
+	private Semaphore handleReq;
+	private Semaphore scalesAvail;
 
-  private Semaphore workerCoord, taskToDo, scaleCoord;
-  private Semaphore custReady, custFinished;
-  private ArrayList<Semaphore> workFinished;
+	WorkThr(int workId, ArrayList<Semaphore> done, Semaphore workAvail, Semaphore custRequest, Semaphore finished, Semaphore getCustInfo, Semaphore handleReq, Semaphore scalesAvail) {
+		this.done	= done;
+		this.workId	= workId;
+		this.workAvail = workAvail;
+		this.custRequest = custRequest;
+		this.finished = finished;
+		this.getCustInfo = getCustInfo;
+		this.handleReq = handleReq;
+		this.scalesAvail = scalesAvail;
+	} //end WorkThr
 
-  WorkThr(int id, Semaphore workerCoord, Semaphore taskToDo, Semaphore scaleCoord, Semaphore custReady, Semaphore custFinished, ArrayList<Semaphore> workFinished) {
-    this.id = id;
-    this.workerCoord = workerCoord;
-    this.scaleCoord = scaleCoord;
-    this.custReady = custReady;
-    this.workFinished = workFinished;
-  } //end WorkSem(1)
+	public void run() {
+		System.out.println( "Postal worker " + workId + " created." );
 
-  public void run() {
+		while(true)	{ //runs until program ends
+			try	{
+				custRequest.acquire();
+			} //end try
+			catch(InterruptedException e) { }
 
-    System.out.println("Postal worker " + id + " created");
-    while(true) {
-      try {
-        custReady.acquire();
-      } //end try
-      catch(InterruptedException e) { }
+			//gets global data from PostOffice about the customer they are servicing
+			this.custId = PostOffice.custId;
+			this.task = PostOffice.task;
+			PostOffice.custWithWorker[this.custId] = this.workId;
 
-      try {
-        workerCoord.acquire();
-      }
-      catch(InterruptedException e) { }
+			getCustInfo.release();
 
-      System.out.println("Postal worker " + id + " serving customer ");// + CustSem.id);
+			try {
+				handleReq.acquire();
+			} //end try
+			catch(InterruptedException e) { }
 
-      this.task = PostOffice.custTask;
+			if(this.task == 2) { //customer wants to mail a package
+				try {
+					scalesAvail.acquire();
+				} //end try
+				catch(InterruptedException e) { }
 
-      switch(task) {
+				System.out.println("Scales in use by postal worker " + workId);
 
-        case 1:
-          try {
-            Thread.sleep(1000);
-          }
-          catch(InterruptedException e) { }
-          break;
+				try {
+					Thread.sleep(2000); //mailing package time
+				}
+				catch(InterruptedException e) { }
 
-        case 2:
-          try {
-            Thread.sleep(1500);
-          }
-          catch(InterruptedException e) { }
-          break;
+				System.out.println("Scales released by postal worker " + workId);
+				scalesAvail.release();
+			}
+			else if(this.task == 1) { //mail a letter
+				try {
+					Thread.sleep(1500); //mailing letter time
+				}
+				catch(InterruptedException e) { }
+			}
+			else { //buy stamps
+				try {
+				Thread.sleep(1000); //buying stamps time
+				} //end try
+				catch(InterruptedException e) { }
+			} //end else
 
-        case 3:
-          try {
-          Thread.sleep(2000);
-          }
-          catch(InterruptedException e) { }
-          break;
+			System.out.println("Postal worker " + workId + " finished serving customer " + this.custId);
 
-        default:
-          break;
-      } //end switch
+			done.get(this.custId).release();
 
-      custFinished.release();
+			try {
+				finished.acquire();		//	waits for customer to exit
+			} //end try
+			catch(InterruptedException e) { }
 
-      System.out.println("Postal worker " + id + " finished serving customer ");// + CustSem.id);
-
-      workFinished.get(this.custId).release();
-
-      workerCoord.release();
-
-    } //end while
-
-  } //end run
-
-} //end WorkSem
+			workAvail.release();	//	allows another customer to be helped
+		} //end while
+	} //end run
+} //end WorkThr
